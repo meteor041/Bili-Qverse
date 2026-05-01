@@ -35,18 +35,48 @@ async function request(url) {
   throw lastError;
 }
 
+function shouldRetryStatus(status) {
+  return status === 412 || status === 429 || status >= 500;
+}
+
+async function waitBeforeRetry(attempt) {
+  const jitter = Math.floor(Math.random() * CONFIG.requestDelayMs);
+  await sleep(CONFIG.requestDelayMs * (attempt + 2) + jitter);
+}
+
 export async function fetchJson(url) {
-  const response = await request(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
-  const json = await response.json();
-  if (json.code !== 0) throw new Error(`Bilibili API ${json.code}: ${json.message || url}`);
-  return json;
+  let lastError;
+
+  for (let attempt = 0; attempt <= CONFIG.fetchRetries; attempt += 1) {
+    const response = await request(url);
+    if (response.ok) {
+      const json = await response.json();
+      if (json.code === 0) return json;
+      lastError = new Error(`Bilibili API ${json.code}: ${json.message || url}`);
+    } else {
+      lastError = new Error(`HTTP ${response.status}: ${url}`);
+      if (!shouldRetryStatus(response.status)) throw lastError;
+    }
+
+    if (attempt < CONFIG.fetchRetries) await waitBeforeRetry(attempt);
+  }
+
+  throw lastError;
 }
 
 export async function fetchText(url) {
-  const response = await request(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
-  return response.text();
+  let lastError;
+
+  for (let attempt = 0; attempt <= CONFIG.fetchRetries; attempt += 1) {
+    const response = await request(url);
+    if (response.ok) return response.text();
+
+    lastError = new Error(`HTTP ${response.status}: ${url}`);
+    if (!shouldRetryStatus(response.status)) throw lastError;
+    if (attempt < CONFIG.fetchRetries) await waitBeforeRetry(attempt);
+  }
+
+  throw lastError;
 }
 
 export async function fetchNewlist(rid, pn, ps) {
