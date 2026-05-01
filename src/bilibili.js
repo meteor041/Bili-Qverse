@@ -131,6 +131,10 @@ export function hasQuestion(value) {
   return value.includes('?') || value.includes('？');
 }
 
+export function hasOnlyQuestionMarks(value) {
+  return /^[?？]+$/.test(String(value || '').trim());
+}
+
 export function parseDanmakuXml(xml) {
   const matches = xml.matchAll(/<d\b[^>]*p="([^"]*)"[^>]*>([\s\S]*?)<\/d>/g);
   const items = [];
@@ -144,7 +148,7 @@ export function parseDanmakuXml(xml) {
       time: Number.isFinite(time) ? time : 0,
       sendTime: Number.isFinite(sendTime) ? sendTime : 0,
       content,
-      isQuestion: hasQuestion(content)
+      isQuestion: hasOnlyQuestionMarks(content)
     });
   }
 
