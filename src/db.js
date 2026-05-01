@@ -625,9 +625,7 @@ export async function getRankingPayload({ cutoff, limit = CONFIG.rankingLimit, s
       rangeDays,
       viewThreshold: CONFIG.viewThreshold,
       sort: normalizedSort,
-      rids: [...new Set(CONFIG.rids)],
-      postgresUrl: CONFIG.postgresUrl.replace(/:[^:@/]+@/, ':***@'),
-      redisUrl: CONFIG.redisUrl
+      rids: [...new Set(CONFIG.rids)]
     },
     run: latestRun,
     items: sortRankingItems(items, normalizedSort).slice(0, safeLimit)
