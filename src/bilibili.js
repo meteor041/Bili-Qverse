@@ -1,9 +1,14 @@
 import { CONFIG } from './config.js';
 
 const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (compatible; qlist/0.1; +https://www.bilibili.com/)',
-  Referer: 'https://www.bilibili.com/'
+  'User-Agent': process.env.BILIBILI_USER_AGENT || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  Referer: 'https://www.bilibili.com/',
+  Origin: 'https://www.bilibili.com',
+  Accept: 'application/json, text/plain, */*',
+  'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
 };
+
+if (process.env.BILIBILI_COOKIE) HEADERS.Cookie = process.env.BILIBILI_COOKIE;
 
 export function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));

@@ -6,7 +6,7 @@ function uniqueNumbers(values) {
   return [...new Set(values)].filter(Number.isFinite);
 }
 
-function asVideoItem(video, fallbackRid) {
+export function asVideoItem(video, fallbackRid) {
   const duration = Number(video.duration || 0);
   const tags = Array.isArray(video.tags) ? video.tags : [];
   return {
@@ -43,7 +43,7 @@ function shouldScanDanmaku(video, nowSeconds = Math.floor(Date.now() / 1000)) {
   return video.pubdate >= earlyCutoff && video.view >= CONFIG.earlyViewThreshold;
 }
 
-async function mapLimit(items, concurrency, worker) {
+export async function mapLimit(items, concurrency, worker) {
   const queue = [...items.entries()];
   const workerCount = Math.max(1, Math.min(concurrency, queue.length));
 
@@ -108,7 +108,7 @@ async function collectRecentHotVideos() {
   return [...result.values()];
 }
 
-async function enrichWithDanmaku(video) {
+export async function enrichWithDanmaku(video) {
   const viewJson = await fetchVideoView(video.bvid);
   const tagJson = await fetchVideoTags(video.bvid).catch(() => ({ data: [] }));
   const tags = (Array.isArray(tagJson.data) ? tagJson.data : []).map(tag => tag.tag_name || tag.name).filter(Boolean).slice(0, 20);

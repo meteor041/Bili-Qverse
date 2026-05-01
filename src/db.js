@@ -385,6 +385,51 @@ export async function getDanmakuStat(bvid) {
   return rows[0] || null;
 }
 
+export async function listDanmakuBackfillCandidates({ cutoff, viewThreshold = CONFIG.viewThreshold, limit = 1000, retryAfterMinutes = 60 } = {}) {
+  const cutoffSeconds = Number(cutoff || getCutoff());
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 1000, 50000));
+  const safeThreshold = Math.max(0, Number(viewThreshold) || 0);
+  const retryCutoff = new Date(Date.now() - Math.max(0, Number(retryAfterMinutes) || 0) * 60 * 1000).toISOString();
+
+  const { rows } = await query(`
+    SELECT
+      videos.bvid,
+      videos.aid,
+      videos.title,
+      videos.author,
+      videos.mid,
+      videos.rid,
+      videos.tname,
+      videos.tags,
+      videos.pubdate,
+      videos.view,
+      videos.duration,
+      videos.pic,
+      videos.url
+    FROM videos
+    LEFT JOIN danmaku_stats ON danmaku_stats.bvid = videos.bvid
+    WHERE videos.pubdate >= $1
+      AND videos.view >= $2
+      AND (
+        danmaku_stats.bvid IS NULL
+        OR danmaku_stats.error IS NOT NULL
+        OR NOT EXISTS (
+          SELECT 1 FROM video_danmaku_daily_stats
+          WHERE video_danmaku_daily_stats.bvid = videos.bvid
+          LIMIT 1
+        )
+      )
+      AND (danmaku_stats.scanned_at IS NULL OR danmaku_stats.scanned_at < $3)
+    ORDER BY
+      CASE WHEN danmaku_stats.bvid IS NULL THEN 0 ELSE 1 END ASC,
+      videos.view DESC,
+      videos.pubdate DESC
+    LIMIT $4
+  `, [cutoffSeconds, safeThreshold, retryCutoff, safeLimit]);
+
+  return rows;
+}
+
 export async function upsertDanmakuStat(stat) {
   await query(`
     INSERT INTO danmaku_stats (bvid, cid_count, question_count, danmaku_count, scanned_at, error)

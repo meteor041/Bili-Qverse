@@ -12,6 +12,7 @@
     "crawl:backfill": "RECENT_DAYS=7 VIEW_THRESHOLD=100000 EARLY_WINDOW_HOURS=0 MAX_PAGES_PER_RID=200 node src/crawler.js",
     "crawl:month": "RECENT_DAYS=30 VIEW_THRESHOLD=100000 EARLY_WINDOW_HOURS=0 MAX_PAGES_PER_RID=500 node src/crawler.js",
     "crawl:since2026": "CRAWL_START_DATE=2026-01-01 VIEW_THRESHOLD=10000 EARLY_WINDOW_HOURS=0 MAX_PAGES_PER_RID=2000 FORCE_RESCAN=1 RID_CONCURRENCY=4 VIDEO_CONCURRENCY=8 PAGE_CONCURRENCY=3 REQUEST_DELAY_MS=500 node src/crawler.js",
+    "backfill:danmaku": "node src/backfill-danmaku.js",
     "check": "node --check src/server.js && node --check src/crawler.js && node --check src/bilibili.js && node --check src/db.js && node --check src/analysis.js && node --check src/backfill-tags.js",
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
