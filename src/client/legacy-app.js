@@ -519,7 +519,7 @@ Object.assign(window, {
     const questionCount = Number(item.questionCount || 0);
     const questionRate = Number(item.questionRate || (danmakuCount > 0 ? questionCount / danmakuCount : 0));
     const score = Number(item.confusionScore || 0);
-    const questionIndex = Math.max(1, Math.min(100, Math.round(score > 0 ? Math.log10(score + 10) * 24 : questionCount)));
+    const questionIndex = Math.max(1, Math.min(100, Math.round(score > 0 ? 100 * (1 - Math.exp(-score / 3000)) : questionCount)));
     const bvid = item.bvid || `mock-${index + 1}`;
     const tags = parseVideoTags(item.tags);
     return {
@@ -619,6 +619,46 @@ Object.assign(window, {
       videos,
       stats,
       hotTags,
+      loading,
+      error
+    };
+  }
+  function useHallData() {
+    const [videos, setVideos] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    useEffect(() => {
+      let cancelled = false;
+      async function load() {
+        setLoading(true);
+        setError(null);
+        try {
+          const params = new URLSearchParams({
+            range: 'all',
+            sort: 'score',
+            limit: '8'
+          });
+          const res = await fetch(`/api/ranking?${params.toString()}`);
+          if (!res.ok) throw new Error(`ranking HTTP ${res.status}`);
+          const payload = await res.json();
+          if (cancelled) return;
+          setVideos((payload.items || []).map(normalizeVideo));
+        } catch (err) {
+          if (!cancelled) {
+            setError(err.message);
+            setVideos([]);
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      }
+      load();
+      return () => {
+        cancelled = true;
+      };
+    }, []);
+    return {
+      videos,
       loading,
       error
     };
@@ -1411,6 +1451,7 @@ Object.assign(window, {
     loading
   }) {
     const [cnt, setCnt] = useState(0);
+    const [coverHover, setCoverHover] = useState(false);
     useEffect(() => {
       let n = 0;
       function s() {
@@ -1522,11 +1563,15 @@ Object.assign(window, {
         animation: 'fadeInUp .7s ease .1s both'
       }
     }, React.createElement("div", null, React.createElement("div", {
+      onMouseEnter: () => setCoverHover(true),
+      onMouseLeave: () => setCoverHover(false),
+      onClick: () => onSelect(vid),
       style: {
         borderRadius: 16,
         overflow: 'hidden',
         boxShadow: '0 20px 60px rgba(0,161,214,.2),0 0 0 1px rgba(0,161,214,.15)',
-        position: 'relative'
+        position: 'relative',
+        cursor: 'pointer'
       }
     }, React.createElement("div", {
       style: {
@@ -1549,7 +1594,54 @@ Object.assign(window, {
         background: 'linear-gradient(to top,rgba(0,0,0,.8),transparent)',
         pointerEvents: 'none'
       }
-    })), React.createElement("div", {
+    }), React.createElement("button", {
+      onClick: event => {
+        event.stopPropagation();
+        openBilibiliVideo(vid);
+      },
+      title: "打开 B 站视频",
+      style: {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%,-50%)',
+        width: 58,
+        height: 58,
+        borderRadius: '50%',
+        border: '1.5px solid rgba(255,255,255,.4)',
+        background: 'rgba(0,0,0,.62)',
+        color: '#fff',
+        fontSize: 22,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        backdropFilter: 'blur(6px)',
+        boxShadow: '0 10px 30px rgba(0,0,0,.35),0 0 24px rgba(0,229,255,.18)',
+        zIndex: 3,
+        opacity: coverHover ? 1 : 0,
+        pointerEvents: coverHover ? 'auto' : 'none',
+        transition: 'opacity .18s ease,transform .18s ease',
+        transform: `translate(-50%,-50%) scale(${coverHover ? 1 : .92})`
+      }
+    }, "▶"), React.createElement("div", {
+      style: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        zIndex: 3,
+        color: 'rgba(255,255,255,.72)',
+        background: 'rgba(0,0,0,.45)',
+        border: '1px solid rgba(255,255,255,.16)',
+        borderRadius: 999,
+        padding: '4px 9px',
+        fontSize: 10,
+        pointerEvents: 'none',
+        opacity: coverHover ? 1 : 0,
+        transition: 'opacity .18s ease'
+      }
+    }, "点击封面看详情")), React.createElement("div", {
       style: {
         position: 'absolute',
         bottom: 16,
@@ -2813,13 +2905,14 @@ Object.assign(window, {
   function HallOfFame({
     onBack,
     videos,
-    onSelect
+    onSelect,
+    loading,
+    error
   }) {
-    const hall = videos?.length ? videos.slice(0, 8).map((v, i) => ({
+    const hall = videos?.length ? videos.slice(0, 8).map(v => ({
       ...v,
-      date: v.uploadTime,
-      questionIndex: Math.max(100, v.questionIndex + i)
-    })) : window.__Q.hall;
+      date: v.uploadTime
+    })) : [];
     const cols = [['#1a0533', '#5c1a8a'], ['#0d1b2a', '#1b4332'], ['#1a0a00', '#6b2d00'], ['#0a0a2e', '#1a1a6e']];
     return React.createElement("div", {
       style: {
@@ -2842,7 +2935,7 @@ Object.assign(window, {
         fontFamily: 'inherit',
         padding: 0
       }
-    }, "\u2190 \u8FD4\u56DE"), React.createElement("div", {
+    }, "← 返回"), React.createElement("div", {
       style: {
         textAlign: 'center',
         marginBottom: 48
@@ -2860,7 +2953,7 @@ Object.assign(window, {
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent'
       }
-    }, "\uD83C\uDFC6")), React.createElement("h2", {
+    }, "🏆")), React.createElement("h2", {
       style: {
         fontSize: 32,
         fontWeight: 900,
@@ -2872,12 +2965,24 @@ Object.assign(window, {
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent'
       }
-    }, "\u8FF7\u60D1\u540D\u4EBA\u5802")), React.createElement("p", {
+    }, "迷惑名人堂")), React.createElement("p", {
       style: {
         color: 'var(--muted)',
         fontSize: 14
       }
-    }, "\u7591\u95EE\u6307\u6570\u7A81\u7834 100 \u5206\u7684\u4F20\u5947\u89C6\u9891")), React.createElement("div", {
+    }, "总榜中综合疑惑分最高的传奇视频"), loading && React.createElement("div", {
+      style: {
+        marginTop: 12,
+        color: 'var(--qc)',
+        fontSize: 12
+      }
+    }, "正在读取真实总榜…"), error && React.createElement("div", {
+      style: {
+        marginTop: 12,
+        color: 'var(--pink)',
+        fontSize: 12
+      }
+    }, "名人堂数据加载失败：", error)), hall.length > 0 ? React.createElement(React.Fragment, null, React.createElement("div", {
       style: {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))',
@@ -2936,7 +3041,7 @@ Object.assign(window, {
         fontWeight: 900,
         boxShadow: '0 4px 14px rgba(255,215,0,.35)'
       }
-    }, "🏆 名人堂"), React.createElement("button", {
+    }, "🏆 总榜 #", i + 1), React.createElement("button", {
       onClick: e => {
         e.stopPropagation();
         openBilibiliVideo(v);
@@ -2971,7 +3076,7 @@ Object.assign(window, {
         color: '#ffd700',
         textShadow: '0 0 22px rgba(255,215,0,.75)'
       }
-    }, "100")), React.createElement("div", {
+    }, v.questionIndex)), React.createElement("div", {
       style: {
         padding: 16
       }
@@ -3032,7 +3137,7 @@ Object.assign(window, {
         fontSize: 11,
         color: 'rgba(255,255,255,.5)'
       }
-    }, React.createElement("span", null, "\u25B6 ", v.plays), React.createElement("span", null, v.date)), React.createElement("div", {
+    }, React.createElement("span", null, "▶ ", v.plays), React.createElement("span", null, v.date)), React.createElement("div", {
       style: {
         position: 'absolute',
         bottom: -10,
@@ -3043,7 +3148,7 @@ Object.assign(window, {
         userSelect: 'none',
         lineHeight: 1
       }
-    }, "\uFF1F"))))), React.createElement("div", {
+    }, "？"))))), React.createElement("div", {
       style: {
         marginTop: 48,
         background: 'var(--card)',
@@ -3058,17 +3163,21 @@ Object.assign(window, {
         color: 'var(--muted)',
         marginBottom: 8
       }
-    }, "\u76EE\u524D\u5171\u6709 ", React.createElement("span", {
+    }, "目前共有 ", React.createElement("span", {
       style: {
         color: '#ffd700',
         fontWeight: 700
       }
-    }, hall.length), " \u4E2A\u89C6\u9891\u8363\u767B\u540D\u4EBA\u5802"), React.createElement("div", {
+    }, hall.length), " 个视频荣登名人堂"))) : React.createElement("div", {
       style: {
-        fontSize: 12,
-        color: 'var(--text-muted)'
+        background: 'var(--card)',
+        border: '1px solid var(--border)',
+        borderRadius: 16,
+        padding: 28,
+        textAlign: 'center',
+        color: 'var(--muted)'
       }
-    }, "\u7591\u95EE\u6307\u6570\u8FBE\u5230 100 \u5206\u81EA\u52A8\u5165\u9009\uFF0C\u6BCF\u6708\u6E05\u7B97\u4E00\u6B21")));
+    }, loading ? "正在加载名人堂…" : "暂无真实名人堂数据，请先完成一轮弹幕统计"));
   }
   function ConfusionCalc() {
     const [input, setInput] = useState('');
@@ -3079,15 +3188,21 @@ Object.assign(window, {
     const [logs, setLogs] = useState([]);
     const [qExplosion, setQExplosion] = useState(false);
     const scanMessages = ['读取 BV 号…', '获取视频基础信息…', '拉取弹幕 XML…', '统计问号弹幕…', '分析疑问时间轴…', '抽样评论疑问词…', '生成最终结果…'];
-    const normalizeBvid = value => value.trim();
+    const extractBvid = value => {
+      const text = String(value || '').trim();
+      const match = text.match(/BV[0-9A-Za-z]{6,}/i);
+      return match ? match[0].replace(/^bv/i, 'BV') : '';
+    };
     const isValidBvid = value => /^BV[0-9A-Za-z]{6,}$/i.test(value);
     const buildScore = data => {
       const questionCount = Number(data?.danmaku?.questionCount || 0);
-      const questionRate = Number(data?.danmaku?.questionRate || 0);
-      const commentRate = Number(data?.comments?.questionRate || 0);
+      const danmakuCount = Number(data?.danmaku?.danmakuCount || 0);
       const view = Number(data?.view || 0);
-      const raw = Math.log10(questionCount + 1) * 28 + Math.min(questionRate * 100, 35) + Math.min(commentRate * 60, 12) + Math.log10(view + 10) * 3;
-      return Math.max(1, Math.min(100, Math.round(raw)));
+      const effectiveRate = questionCount / (danmakuCount + 50);
+      const rateBoost = 1 + 2 * (1 - Math.exp(-5 * effectiveRate));
+      const rawScore = Math.sqrt(questionCount) * Math.log10(view + 10) * rateBoost;
+      const mapped = 100 * (1 - Math.exp(-rawScore / 3000));
+      return Math.max(1, Math.min(100, Math.round(mapped)));
     };
     async function runAnalysis(bvid) {
       try {
@@ -3108,12 +3223,13 @@ Object.assign(window, {
       }
     }
     function calculate() {
-      const bvid = normalizeBvid(input);
+      const bvid = extractBvid(input);
       if (!bvid) return;
       if (!isValidBvid(bvid)) {
-        setError('请输入正确的 BV 号，例如 BV1xx411c7mD');
+        setError('请输入正确的 BV 号或 B 站视频网址，例如 BV1xx411c7mD');
         return;
       }
+      setInput(bvid);
       setStage('scanning');
       setError('');
       setLogs([]);
@@ -3164,7 +3280,7 @@ Object.assign(window, {
         color: 'var(--muted)',
         fontSize: 14
       }
-    }, "输入 BV 号，直接统计弹幕和评论里的疑问信号")), React.createElement("div", {
+    }, "输入 BV 号或 B 站视频网址，直接统计弹幕和评论里的疑问信号")), React.createElement("div", {
       style: {
         background: 'var(--card)',
         border: '1px solid var(--border)',
@@ -3185,7 +3301,7 @@ Object.assign(window, {
       onKeyDown: e => {
         if (e.key === 'Enter') calculate();
       },
-      placeholder: "输入 BV 号，例如：BV1xx411c7mD",
+      placeholder: "输入 BV 号或视频网址，例如：https://www.bilibili.com/video/BV1xx411c7mD",
       style: {
         width: '100%',
         background: 'var(--card2)',
@@ -4024,6 +4140,7 @@ Object.assign(window, {
     const [compareList, setCompareList] = useState([]);
     const [compareMode, setCompareMode] = useState(false);
     const homeData = useHomeData();
+    const hallData = useHallData();
     const vids = homeData.videos;
     const heroVid = vids[parseInt(tweaks.heroIdx) || 0] || vids[0];
     const goDetail = useCallback(v => {
@@ -4091,8 +4208,10 @@ Object.assign(window, {
       onShare: openShare
     }), page === 'hall' && React.createElement(HallOfFame, {
       onBack: () => setPage('home'),
-      videos: vids,
-      onSelect: goDetail
+      videos: hallData.videos,
+      onSelect: goDetail,
+      loading: hallData.loading,
+      error: hallData.error
     }), page === 'compare' && React.createElement(ComparePage, {
       videos: vids
     }), page === 'calc' && React.createElement(ConfusionCalc, null)), shareVid && React.createElement(ShareCard, {

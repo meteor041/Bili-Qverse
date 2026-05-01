@@ -16,9 +16,13 @@ function nowIso() {
 }
 
 function jsonTags(tags) {
-  if (Array.isArray(tags)) return JSON.stringify(tags.slice(0, 20));
-  if (typeof tags === 'string') return tags || '[]';
+  if (Array.isArray(tags)) return JSON.stringify(tags.slice(0, 20).map(sanitizeText));
+  if (typeof tags === 'string') return tags.replace(/\u0000/g, '') || '[]';
   return '[]';
+}
+
+function sanitizeText(value) {
+  return String(value || '').replace(/\u0000/g, '');
 }
 
 function cacheKey(...parts) {
@@ -355,17 +359,17 @@ export async function upsertVideo(video) {
   `, [
     video.bvid,
     video.aid || null,
-    video.title || '',
-    video.author || '',
+    sanitizeText(video.title),
+    sanitizeText(video.author),
     video.mid || null,
     video.rid || null,
-    video.tname || '',
+    sanitizeText(video.tname),
     jsonTags(video.tags),
     Number(video.pubdate || 0),
     Number(video.view || 0),
     Number(video.duration || 0),
-    video.pic || '',
-    video.url || '',
+    sanitizeText(video.pic),
+    sanitizeText(video.url),
     seenAt
   ]);
 }
