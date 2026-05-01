@@ -25,6 +25,12 @@ function sanitizeText(value) {
   return String(value || '').replace(/\u0000/g, '');
 }
 
+function sanitizeImageUrl(value) {
+  const text = sanitizeText(value).trim();
+  if (text.startsWith('//')) return `https:${text}`;
+  return text.replace(/^http:\/\/i([0-9])\.hdslb\.com\//i, 'https://i$1.hdslb.com/');
+}
+
 function cacheKey(...parts) {
   return ['qlist', ...parts].join(':');
 }
@@ -368,7 +374,7 @@ export async function upsertVideo(video) {
     Number(video.pubdate || 0),
     Number(video.view || 0),
     Number(video.duration || 0),
-    sanitizeText(video.pic),
+    sanitizeImageUrl(video.pic),
     sanitizeText(video.url),
     seenAt
   ]);

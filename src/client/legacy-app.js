@@ -514,6 +514,12 @@ Object.assign(window, {
     })();
     return rawTags.map(tag => String(tag || '').trim()).filter(Boolean).slice(0, 3).map(tag => tag.startsWith('#') ? tag : `#${tag}`);
   }
+  function normalizeImageUrl(value) {
+    const url = String(value || '').trim();
+    if (!url) return null;
+    if (url.startsWith('//')) return `https:${url}`;
+    return url.replace(/^http:\/\/i([0-9])\.hdslb\.com\//i, 'https://i$1.hdslb.com/');
+  }
   function normalizeVideo(item, index = 0) {
     const danmakuCount = Number(item.danmakuCount || 0);
     const questionCount = Number(item.questionCount || 0);
@@ -526,7 +532,7 @@ Object.assign(window, {
       id: bvid,
       bvid,
       title: item.title || '未命名视频',
-      cover: item.pic || null,
+      cover: normalizeImageUrl(item.pic),
       uploader: item.author || '未知 UP',
       avatar: null,
       plays: formatCompactNumber(item.view),
