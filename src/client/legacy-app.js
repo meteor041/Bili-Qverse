@@ -566,8 +566,25 @@ Object.assign(window, {
   function getBilibiliVideoUrl(vid) {
     return vid?.url || (vid?.bvid ? `https://www.bilibili.com/video/${vid.bvid}` : 'https://www.bilibili.com/');
   }
+  function getBilibiliVideoTimeUrl(vid, seconds = 0) {
+    const baseUrl = getBilibiliVideoUrl(vid);
+    const startSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+    if (!startSeconds) return baseUrl;
+
+    try {
+      const url = new URL(baseUrl);
+      url.searchParams.set('t', String(startSeconds));
+      return url.toString();
+    } catch {
+      const separator = baseUrl.includes('?') ? '&' : '?';
+      return `${baseUrl}${separator}t=${startSeconds}`;
+    }
+  }
   function openBilibiliVideo(vid) {
     window.open(getBilibiliVideoUrl(vid), '_blank', 'noopener,noreferrer');
+  }
+  function openBilibiliVideoAt(vid, seconds = 0) {
+    window.open(getBilibiliVideoTimeUrl(vid, seconds), '_blank', 'noopener,noreferrer');
   }
   async function fetchRankingItems({ range, type, limit = 100 }) {
     const params = new URLSearchParams({
@@ -2211,7 +2228,8 @@ Object.assign(window, {
   function Waveform({
     tl = [],
     peaks = [],
-    color = '#00A1D6'
+    color = '#00A1D6',
+    vid = null
   }) {
     const safeTl = (Array.isArray(tl) && tl.length > 0 ? tl : [{
       t: 0,
@@ -2259,6 +2277,10 @@ Object.assign(window, {
       });
     }, [safeTl, color]);
     const fmt = s => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+    const jumpToPeak = peak => {
+      if (!vid) return;
+      openBilibiliVideoAt(vid, Number(peak?.seconds ?? peak?.start ?? peak?.t ?? 0));
+    };
     return React.createElement("div", null, React.createElement("canvas", {
       ref: ref,
       width: 800,
@@ -2289,6 +2311,8 @@ Object.assign(window, {
       }
     }, "\uD83D\uDCA5 \u8FF7\u60D1\u77AC\u95F4"), peaks.map((m, i) => React.createElement("div", {
       key: i,
+      onClick: () => jumpToPeak(m),
+      title: vid ? `跳转到 B 站 ${m.time}` : undefined,
       style: {
         display: 'flex',
         alignItems: 'center',
@@ -2298,7 +2322,7 @@ Object.assign(window, {
         padding: '8px 12px',
         border: '1px solid var(--border)',
         marginBottom: 6,
-        cursor: 'pointer'
+        cursor: vid ? 'pointer' : 'default'
       }
     }, React.createElement("div", {
       style: {
@@ -2334,7 +2358,7 @@ Object.assign(window, {
         fontSize: 11,
         color: 'var(--blue)'
       }
-    }, "\u2192 \u8DF3\u8F6C")))));
+    }, vid ? "\u2192 \u8DF3\u8F6C" : "\u2192")))));
   }
   function ComparePage({
     videos
@@ -3543,6 +3567,7 @@ Object.assign(window, {
         v: Number(item.questionCount || 0)
       })) : fallbackVid.timeline,
       peaks: analysisTimeline.length > 0 ? analysisTimeline.slice(0, 5).map(item => ({
+        seconds: Number(item.start || 0),
         time: `${Math.floor(Number(item.start || 0) / 60)}:${String(Number(item.start || 0) % 60).padStart(2, '0')}`,
         label: '？'.repeat(Math.max(1, Math.min(12, Number(item.questionCount || 0)))),
         count: Number(item.questionCount || 0)
@@ -3817,7 +3842,8 @@ Object.assign(window, {
       }
     }, "\u7EA2\u8272=\u95EE\u53F7\u7206\u53D1\u533A\u95F4")), React.createElement(Waveform, {
       tl: detailVid.timeline,
-      peaks: detailVid.peaks
+      peaks: detailVid.peaks,
+      vid: detailVid
     })), tab === 'comments' && React.createElement("div", null, React.createElement("div", {
       style: {
         fontSize: 14,
