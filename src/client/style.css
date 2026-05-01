@@ -1,0 +1,26 @@
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#00A1D6;--blue-d:#0091C0;--pink:#FB7299;
+  --bg:#0d0f14;--card:#161922;--card2:#1d2130;--hover:#232840;
+  --txt:#e8ecf4;--txt2:#8892a8;--muted:#4a5270;--border:rgba(255,255,255,0.06);
+  --red:#ff4757;--orange:#ff6b35;--gold:#ffd700;--qc:#00e5ff;
+}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Noto Sans SC',sans-serif;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--blue)}
+#danmaku-layer{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;overflow:hidden;z-index:11}
+.dm{position:absolute;white-space:nowrap;font-weight:900;opacity:0;animation:dmfly linear forwards;letter-spacing:2px}
+@keyframes dmfly{0%{opacity:0;transform:translateX(0)}5%{opacity:.7}95%{opacity:.7}100%{opacity:0;transform:translateX(-120vw)}}
+.floatq{position:fixed;pointer-events:none;z-index:11;font-weight:900;animation:fup linear infinite;opacity:0;color:var(--blue)}
+@keyframes fup{0%{transform:translateY(0) rotate(0deg);opacity:0}10%{opacity:.1}90%{opacity:.04}100%{transform:translateY(-100vh) rotate(30deg);opacity:0}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}
+@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideInCard{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+@keyframes goldGlow{0%,100%{box-shadow:0 0 20px rgba(255,215,0,.3)}50%{box-shadow:0 0 40px rgba(255,215,0,.7),0 0 80px rgba(255,215,0,.3)}}
+@keyframes counterTick{0%{transform:translateY(0)}50%{transform:translateY(-2px)}100%{transform:translateY(0)}}
+@keyframes qExplode{0%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.8}100%{transform:scale(1);opacity:1}}
+@keyframes battleResult{from{opacity:0;transform:scale(.5) translateY(-20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes scanLine{0%{top:0}100%{top:100%}}

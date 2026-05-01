@@ -1,0 +1,11 @@
+SHELL=/bin/bash
+PATH=/root/qlist/.node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# qlist incremental Bilibili crawler
+# Logs: /root/qlist/logs/cron.log
+# Global lock: /root/qlist/logs/crawl.lock
+
+*/15 * * * * root /root/qlist/scripts/cron-crawl.sh early >> /root/qlist/logs/cron.log 2>&1
+5 * * * * root /root/qlist/scripts/cron-crawl.sh fast >> /root/qlist/logs/cron.log 2>&1
+30 3 * * * root /root/qlist/scripts/cron-crawl.sh backfill >> /root/qlist/logs/cron.log 2>&1
+20 4 * * * root TAG_BACKFILL_LIMIT=2000 TAG_BACKFILL_CONCURRENCY=4 /root/qlist/scripts/cron-crawl.sh tags >> /root/qlist/logs/cron.log 2>&1

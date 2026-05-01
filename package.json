@@ -1,0 +1,41 @@
+{
+  "name": "qlist",
+  "version": "0.1.0",
+  "private": true,
+  "description": "B站近期视频问号弹幕排行榜",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "crawl": "node src/crawler.js",
+    "crawl:early": "RECENT_DAYS=1 VIEW_THRESHOLD=10000 EARLY_WINDOW_HOURS=12 EARLY_VIEW_THRESHOLD=0 MAX_PAGES_PER_RID=30 node src/crawler.js",
+    "crawl:hot": "RECENT_DAYS=3 VIEW_THRESHOLD=10000 EARLY_WINDOW_HOURS=12 EARLY_VIEW_THRESHOLD=0 MAX_PAGES_PER_RID=100 node src/crawler.js",
+    "crawl:backfill": "RECENT_DAYS=7 VIEW_THRESHOLD=100000 EARLY_WINDOW_HOURS=0 MAX_PAGES_PER_RID=200 node src/crawler.js",
+    "crawl:month": "RECENT_DAYS=30 VIEW_THRESHOLD=100000 EARLY_WINDOW_HOURS=0 MAX_PAGES_PER_RID=500 node src/crawler.js",
+    "crawl:since2026": "CRAWL_START_DATE=2026-01-01 VIEW_THRESHOLD=10000 EARLY_WINDOW_HOURS=0 MAX_PAGES_PER_RID=2000 FORCE_RESCAN=1 RID_CONCURRENCY=4 VIDEO_CONCURRENCY=8 PAGE_CONCURRENCY=3 REQUEST_DELAY_MS=500 node src/crawler.js",
+    "check": "node --check src/server.js && node --check src/crawler.js && node --check src/bilibili.js && node --check src/db.js && node --check src/analysis.js && node --check src/backfill-tags.js",
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "backfill:tags": "node src/backfill-tags.js",
+    "crawl:fast": "RID_CONCURRENCY=8 VIDEO_CONCURRENCY=12 PAGE_CONCURRENCY=4 REQUEST_DELAY_MS=300 node src/crawler.js",
+    "crawl:turbo": "RID_CONCURRENCY=12 VIDEO_CONCURRENCY=20 PAGE_CONCURRENCY=5 REQUEST_DELAY_MS=150 node src/crawler.js",
+    "cron:install": "bash scripts/install-cron.sh",
+    "cron:test": "bash scripts/cron-crawl.sh early"
+  },
+  "dependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-react": "^7.28.5",
+    "@babel/standalone": "^7.29.0",
+    "jsdom": "^27.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "pg": "^8.13.1",
+    "redis": "^4.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "vite": "^5.4.21"
+  }
+}
