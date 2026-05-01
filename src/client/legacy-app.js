@@ -569,6 +569,17 @@ Object.assign(window, {
   function openBilibiliVideo(vid) {
     window.open(getBilibiliVideoUrl(vid), '_blank', 'noopener,noreferrer');
   }
+  async function fetchRankingItems({ range, type, limit = 100 }) {
+    const params = new URLSearchParams({
+      range,
+      sort: SORT_TO_API[type] || 'score',
+      limit: String(limit)
+    });
+    const response = await fetch(`/api/ranking?${params.toString()}`);
+    if (!response.ok) throw new Error(`ranking HTTP ${response.status}`);
+    const payload = await response.json();
+    return Array.isArray(payload?.items) ? payload.items : [];
+  }
   function useHomeData(initialRange = 'week', initialType = '综合') {
     const [range, setRange] = useState(initialRange);
     const [type, setType] = useState(initialType);
@@ -583,24 +594,20 @@ Object.assign(window, {
         setLoading(true);
         setError(null);
         try {
-          const params = new URLSearchParams({
-            range,
-            sort: SORT_TO_API[type] || 'score',
-            limit: '100'
-          });
           const tagParams = new URLSearchParams({
             range,
             limit: '16'
           });
-          const [rankingRes, statsRes, tagsRes] = await Promise.all([fetch(`/api/ranking?${params.toString()}`), fetch('/api/stats/realtime'), fetch(`/api/tags/hot?${tagParams.toString()}`)]);
-          if (!rankingRes.ok) throw new Error(`ranking HTTP ${rankingRes.status}`);
-          const ranking = await rankingRes.json();
+          const [rankingItems, statsRes, tagsRes] = await Promise.all([fetchRankingItems({ range, type }), fetch('/api/stats/realtime'), fetch(`/api/tags/hot?${tagParams.toString()}`)]);
           const realtime = statsRes.ok ? await statsRes.json() : null;
           const tagPayload = tagsRes.ok ? await tagsRes.json() : null;
           if (cancelled) return;
-          const mapped = (ranking.items || []).map(normalizeVideo);
+          const fallbackItems = rankingItems.length === 0 && range !== 'all' ? await fetchRankingItems({ range: 'all', type }) : [];
+          if (cancelled) return;
+          const mapped = (rankingItems.length > 0 ? rankingItems : fallbackItems).map(normalizeVideo);
           if (mapped.length > 0) window.__Q.realVideos = mapped;
           setVideos(mapped.length > 0 ? mapped : allVideos());
+          if (rankingItems.length === 0 && mapped.length > 0) setError('当前周期暂无弹幕统计，暂用真实总榜展示。');
           setStats(realtime);
           setHotTags(Array.isArray(tagPayload?.items) ? tagPayload.items : []);
         } catch (err) {
