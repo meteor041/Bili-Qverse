@@ -517,8 +517,9 @@ Object.assign(window, {
   function normalizeImageUrl(value) {
     const url = String(value || '').trim();
     if (!url) return null;
-    if (url.startsWith('//')) return `https:${url}`;
-    return url.replace(/^http:\/\/i([0-9])\.hdslb\.com\//i, 'https://i$1.hdslb.com/');
+    const normalized = url.startsWith('//') ? `https:${url}` : url.replace(/^http:\/\//i, 'https://');
+    if (/^https:\/\/i[0-9]\.hdslb\.com\/bfs\//i.test(normalized)) return `/api/image?url=${encodeURIComponent(normalized)}`;
+    return normalized;
   }
   function normalizeVideo(item, index = 0) {
     const danmakuCount = Number(item.danmakuCount || 0);

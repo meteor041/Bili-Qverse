@@ -29,6 +29,50 @@ function sendError(response, status, message) {
   sendJson(response, status, { error: message });
 }
 
+function normalizeBilibiliImageUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const normalized = raw.startsWith('//') ? `https:${raw}` : raw.replace(/^http:\/\//i, 'https://');
+  let parsed;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    return null;
+  }
+  if (!/^i[0-9]\.hdslb\.com$/i.test(parsed.hostname)) return null;
+  if (!parsed.pathname.startsWith('/bfs/')) return null;
+  return parsed;
+}
+
+async function proxyImage(request, response) {
+  const requestUrl = new URL(request.url, 'http://localhost');
+  const imageUrl = normalizeBilibiliImageUrl(requestUrl.searchParams.get('url'));
+  if (!imageUrl) {
+    sendError(response, 400, 'Invalid image url');
+    return;
+  }
+
+  const upstream = await fetch(imageUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0',
+      Referer: 'https://www.bilibili.com/'
+    }
+  });
+  if (!upstream.ok) {
+    sendError(response, upstream.status, `Image HTTP ${upstream.status}`);
+    return;
+  }
+
+  const contentType = upstream.headers.get('content-type') || 'image/jpeg';
+  const buffer = Buffer.from(await upstream.arrayBuffer());
+  response.writeHead(200, {
+    'Content-Type': contentType,
+    'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+    'Access-Control-Allow-Origin': '*'
+  });
+  response.end(buffer);
+}
+
 async function serveStatic(request, response) {
   const url = new URL(request.url, 'http://localhost');
   const pathname = url.pathname === '/' ? '/index.html' : url.pathname;
@@ -52,6 +96,11 @@ async function serveStatic(request, response) {
 
 async function handleApi(request, response) {
   const url = new URL(request.url, 'http://localhost');
+
+  if (url.pathname === '/api/image' && request.method === 'GET') {
+    await proxyImage(request, response);
+    return;
+  }
 
   const analysisMatch = url.pathname.match(/^\/api\/video\/(BV[0-9A-Za-z]+)\/analysis$/);
   if (analysisMatch && request.method === 'GET') {
